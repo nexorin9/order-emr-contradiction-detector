@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>矛盾详情 - 门诊医嘱-病程矛盾检测系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: #1890ff;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .back-btn:hover {
+      text-decoration: underline;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .detail-header-left h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .detail-header-right {
+      text-align: right;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .his-section {
+      border-left: 3px solid #1890ff;
+    }
+
+    .emr-section {
+      border-left: 3px solid #52c41a;
+    }
+
+    .section-icon {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .timeline-item {
+      position: relative;
+      padding-left: 20px;
+      padding-bottom: 16px;
+      border-left: 2px solid #e8e8e8;
+      margin-left: 8px;
+    }
+
+    .timeline-item:last-child {
+      border-left-color: transparent;
+    }
+
+    .timeline-item::before {
+      content: "●";
+      position: absolute;
+      left: -8px;
+      color: #1890ff;
+      font-size: 12px;
+    }
+
+    .timeline-time {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+
+    .timeline-content {
+      font-size: 14px;
+      color: #333;
+    }
+
+    .resolution-section {
+      background: linear-gradient(135deg, #f6ffed 0%, #e6fffb 100%);
+      border: 1px solid #b7eb8f;
+    }
+
+    .resolution-form {
+      margin-top: 16px;
+    }
+
+    .resolution-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      margin-bottom: 12px;
+    }
+
+    .resolution-textarea:focus {
+      outline: none;
+      border-color: #1890ff;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    .success-message {
+      background: #f6ffed;
+      border: 1px solid #b7eb8f;
+      color: #52c41a;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="navbar-brand">门诊医嘱-病程矛盾实时检测系统</div>
+    <div class="navbar-actions">
+      <button class="btn btn-refresh" onclick="location.reload()">🔄 刷新</button>
+    </div>
+  </nav>
+
+  <!-- 主容器 -->
+  <div class="container">
+    <!-- 返回链接 -->
+    <a class="back-btn" href="index.html">← 返回矛盾列表</a>
+
+    <!-- 加载状态 -->
+    <div id="loadingState" class="loading">加载中...</div>
+
+    <!-- 错误状态 -->
+    <div id="errorState" class="error-state" style="display: none;">
+      <div class="error-state-icon">⚠️</div>
+      <div class="error-state-text" id="errorMessage">加载失败</div>
+      <button class="btn btn-primary" onclick="loadContradictionDetail()">重试</button>
+    </div>
+
+    <!-- 详情内容 -->
+    <div id="detailContent" style="display: none;">
+      <!-- 基本信息卡片 -->
+      <div class="detail-card">
+        <div class="detail-header">
+          <div class="detail-header-left">
+            <h1 id="detailTitle">矛盾详情</h1>
+            <div id="detailTags">
+              <span class="tag severity-high" id="severityTag">高危</span>
+              <span class="tag rule-type-tag" id="ruleTypeTag">开了没写</span>
+              <span class="tag unresolved-tag" id="statusTag">未整改</span>
+            </div>
+          </div>
+          <div class="detail-header-right">
+            <div id="createTime" style="color: #999; font-size: 13px;">-</div>
+          </div>
+        </div>
+
+        <!-- 告警提示 -->
+        <div class="alert-box" id="alertBox">
+          <div class="alert-box-title" id="alertTitle">⚠️ 高危矛盾</div>
+          <div class="alert-box-content" id="alertContent">此矛盾需要立即处理</div>
+        </div>
+
+        <!-- 基本信息 -->
+        <div class="detail-row">
+          <div class="detail-label">患者ID</div>
+          <div class="detail-value" id="patientId">-</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">医生ID</div>
+          <div class="detail-value highlight" id="doctorId">-</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">科室</div>
+          <div class="detail-value" id="department">-</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">矛盾ID</div>
+          <div class="detail-value" style="font-family: monospace; font-size: 12px;" id="contradictionId">-</div>
+        </div>
+      </div>
+
+      <!-- 矛盾对比信息 -->
+      <div class="detail-grid">
+        <!-- HIS医嘱信息 -->
+        <div class="detail-card his-section">
+          <div class="detail-card-title">
+            <span class="section-icon">📋</span>
+            HIS医嘱信息
+          </div>
+          <div id="hisSection">
+            <div class="info-section">
+              <div class="info-section-title">医嘱详情</div>
+              <div class="info-item">
+                <div class="info-item-label">医嘱ID</div>
+                <div class="info-item-value" id="orderId">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">医嘱类型</div>
+                <div class="info-item-value" id="orderType">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">项目名称</div>
+                <div class="info-item-value" id="itemName">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">开立时间</div>
+                <div class="info-item-value" id="orderCreateTime">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">执行时间</div>
+                <div class="info-item-value" id="orderExecuteTime">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">医嘱状态</div>
+                <div class="info-item-value" id="orderStatus">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EMR病程记录信息 -->
+        <div class="detail-card emr-section">
+          <div class="detail-card-title">
+            <span class="section-icon">📄</span>
+            EMR病程记录
+          </div>
+          <div id="emrSection">
+            <div class="info-section">
+              <div class="info-section-title">病程详情</div>
+              <div class="info-item">
+                <div class="info-item-label">记录ID</div>
+                <div class="info-item-value" id="recordId">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">记录类型</div>
+                <div class="info-item-value" id="recordType">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">记录时间</div>
+                <div class="info-item-value" id="recordCreateTime">-</div>
+              </div>
+              <div class="info-item">
+                <div class="info-item-label">关键词</div>
+                <div class="info-item-value" id="contentKeywords">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 矛盾判定依据 -->
+      <div class="detail-card">
+        <div class="detail-card-title">📌 矛盾判定依据</div>
+        <div id="ruleExplanation" class="info-section">
+          <p style="font-size: 14px; color: #333;">
+            根据矛盾类型 "<span id="ruleTypeExplain">开了没写</span>"，系统在规定时间窗口内未在病程记录中找到对应的书写记录。
+          </p>
+          <p style="font-size: 13px; color: #666; margin-top: 8px;">
+            时间窗口：<span id="timeWindow">30</span> 分钟
+          </p>
+        </div>
+      </div>
+
+      <!-- 整改区域 -->
+      <div class="detail-card resolution-section" id="resolutionCard">
+        <div class="detail-card-title">✅ 整改确认</div>
+
+        <!-- 整改成功消息 -->
+        <div class="success-message" id="successMessage">
+          ✓ 整改已确认，记录已更新
+        </div>
+
+        <div id="unresolvedContent">
+          <p style="font-size: 14px; color: #333; margin-bottom: 16px;">
+            请确认此矛盾已处理完毕后，点击下方按钮标记为已整改。
+          </p>
+          <div class="resolution-form">
+            <textarea class="resolution-textarea" id="resolutionNote" placeholder="可选：填写整改说明或备注..."></textarea>
+            <button class="btn btn-success" onclick="markAsResolved()">✓ 标记为已整改</button>
+          </div>
+        </div>
+
+        <div id="resolvedContent" style="display: none;">
+          <p style="font-size: 14px; color: #52c41a; margin-bottom: 8px;">
+            ✓ 此矛盾已于 <span id="resolvedTime">-</span> 标记为已整改
+          </p>
+          <p style="font-size: 13px; color: #666;" id="resolutionNoteDisplay"></p>
+        </div>
+      </div>
+
+      <!-- 操作栏 -->
+      <div class="action-bar">
+        <div class="action-bar-left">
+          <button class="btn btn-secondary" onclick="location.href='index.html'">← 返回列表</button>
+        </div>
+        <div class="action-bar-right">
+          <button class="btn btn-primary" onclick="copyToClipboard()">📋 复制详情</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // API基础URL
+    const API_BASE = 'http://localhost:3000';
+
+    // 当前矛盾ID
+    let currentContradictionId = null;
+    let currentContradiction = null;
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      loadContradictionDetail();
+    });
+
+    // 加载矛盾详情
+    async function loadContradictionDetail() {
+      // 获取URL参数
+      const urlParams = new URLSearchParams(window.location.search);
+      const id = urlParams.get('id');
+
+      if (!id) {
+        showError('缺少矛盾记录ID参数');
+        return;
+      }
+
+      currentContradictionId = id;
+
+      // 显示加载状态
+      document.getElementById('loadingState').style.display = 'block';
+      document.getElementById('errorState').style.display = 'none';
+      document.getElementById('detailContent').style.display = 'none';
+
+      try {
+        // 获取矛盾详情
+        const response = await fetch(`${API_BASE}/api/contradictions?page=1&limit=1000`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          const contradiction = result.data.contradictions.find(c => c.id === id);
+
+          if (contradiction) {
+            currentContradiction = contradiction;
+            displayContradictionDetail(contradiction);
+          } else {
+            showError('未找到指定的矛盾记录');
+          }
+        } else {
+          showError(result.error || '加载失败');
+        }
+      } catch (error) {
+        console.error('加载矛盾详情失败:', error);
+        showError('网络错误，请检查服务器是否运行');
+      }
+    }
+
+    // 显示矛盾详情
+    function displayContradictionDetail(c) {
+      // 隐藏加载，显示内容
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('detailContent').style.display = 'block';
+
+      // 基本信息
+      document.getElementById('detailTitle').textContent = `矛盾详情 #${c.id}`;
+      document.getElementById('patientId').textContent = c.patient_id || '-';
+      document.getElementById('doctorId').textContent = c.doctor_id || '-';
+      document.getElementById('department').textContent = c.department || '-';
+      document.getElementById('contradictionId').textContent = c.id;
+      document.getElementById('createTime').textContent = formatDateTime(c.create_time);
+
+      // 标签
+      const severityTag = document.getElementById('severityTag');
+      severityTag.className = `tag severity-${c.severity}`;
+      severityTag.textContent = c.severity === 'high' ? '高危' : c.severity === 'medium' ? '中危' : '低危';
+
+      const ruleTypeTag = document.getElementById('ruleTypeTag');
+      const ruleTypeText = c.rule_type === 'ordered_but_not_recorded' ? '开了没写' : '写了没开';
+      ruleTypeTag.textContent = ruleTypeText;
+      document.getElementById('ruleTypeExplain').textContent = ruleTypeText;
+
+      const statusTag = document.getElementById('statusTag');
+      if (c.resolved) {
+        statusTag.className = 'tag resolved-tag';
+        statusTag.textContent = '已整改';
+      } else {
+        statusTag.className = 'tag unresolved-tag';
+        statusTag.textContent = '未整改';
+      }
+
+      // 告警提示
+      const alertBox = document.getElementById('alertBox');
+      alertBox.className = `alert-box ${c.severity}`;
+      if (c.severity === 'high') {
+        document.getElementById('alertTitle').textContent = '⚠️ 高危矛盾 - 需立即处理';
+        document.getElementById('alertContent').textContent = '此类矛盾涉及重要诊疗项目未按规定书写病程，可能影响患者安全和医疗质量。';
+      } else if (c.severity === 'medium') {
+        document.getElementById('alertTitle').textContent = '⚡ 中危矛盾 - 建议当日处理';
+        document.getElementById('alertContent').textContent = '此类矛盾需要及时补充病程记录，建议在当班结束前完成整改。';
+      } else {
+        document.getElementById('alertTitle').textContent = 'ℹ️ 低危矛盾 - 可后续处理';
+        document.getElementById('alertContent').textContent = '此类矛盾对诊疗流程影响较小，但仍需按规定补充病程记录。';
+      }
+
+      // HIS医嘱信息
+      if (c.rule_type === 'ordered_but_not_recorded') {
+        document.getElementById('orderId').textContent = c.order_id || c.id + '_ORDER';
+        document.getElementById('orderType').textContent = c.order_type || '检查';
+        document.getElementById('itemName').textContent = c.item_name || '(未获取)';
+        document.getElementById('orderCreateTime').textContent = formatDateTime(c.create_time);
+        document.getElementById('orderExecuteTime').textContent = formatDateTime(c.execute_time);
+        document.getElementById('orderStatus').textContent = '已开立未执行';
+      } else {
+        document.getElementById('orderId').textContent = '-';
+        document.getElementById('orderType').textContent = '-';
+        document.getElementById('itemName').textContent = '-';
+        document.getElementById('orderCreateTime').textContent = '-';
+        document.getElementById('orderExecuteTime').textContent = '-';
+        document.getElementById('orderStatus').textContent = '-';
+      }
+
+      // EMR病程记录信息
+      if (c.rule_type === 'recorded_but_not_ordered') {
+        document.getElementById('recordId').textContent = c.record_id || c.id + '_RECORD';
+        document.getElementById('recordType').textContent = c.record_type || '病程记录';
+        document.getElementById('recordCreateTime').textContent = formatDateTime(c.create_time);
+        document.getElementById('contentKeywords').textContent = c.keywords || '(未获取)';
+      } else {
+        document.getElementById('recordId').textContent = '(未找到对应记录)';
+        document.getElementById('recordType').textContent = '-';
+        document.getElementById('recordCreateTime').textContent = '-';
+        document.getElementById('contentKeywords').textContent = '-';
+      }
+
+      // 时间窗口
+      document.getElementById('timeWindow').textContent = '30';
+
+      // 整改区域
+      if (c.resolved) {
+        document.getElementById('unresolvedContent').style.display = 'none';
+        document.getElementById('resolvedContent').style.display = 'block';
+        document.getElementById('resolvedTime').textContent = formatDateTime(c.resolved_time || c.create_time);
+        document.getElementById('resolutionNoteDisplay').textContent = c.resolution_note || '';
+        document.getElementById('successMessage').style.display = 'none';
+      } else {
+        document.getElementById('unresolvedContent').style.display = 'block';
+        document.getElementById('resolvedContent').style.display = 'none';
+      }
+    }
+
+    // 标记为已整改
+    async function markAsResolved() {
+      const note = document.getElementById('resolutionNote').value;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/contradictions/${currentContradictionId}/resolve`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            resolved: true,
+            resolution_note: note
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          document.getElementById('successMessage').style.display = 'block';
+          document.getElementById('unresolvedContent').style.display = 'none';
+          document.getElementById('resolvedContent').style.display = 'block';
+          document.getElementById('resolvedTime').textContent = formatDateTime(new Date().toISOString());
+          document.getElementById('resolutionNoteDisplay').textContent = note || '(无备注)';
+          document.getElementById('statusTag').className = 'tag resolved-tag';
+          document.getElementById('statusTag').textContent = '已整改';
+
+          // 更新内存中的数据
+          if (currentContradiction) {
+            currentContradiction.resolved = true;
+          }
+        } else {
+          alert('标记失败: ' + (result.error || '未知错误'));
+        }
+      } catch (error) {
+        console.error('标记整改失败:', error);
+        alert('网络错误，请重试');
+      }
+    }
+
+    // 复制详情到剪贴板
+    function copyToClipboard() {
+      if (!currentContradiction) return;
+
+      const text = `
+矛盾详情报告
+============
+矛盾ID: ${currentContradiction.id}
+患者ID: ${currentContradiction.patient_id}
+医生ID: ${currentContradiction.doctor_id}
+科室: ${currentContradiction.department}
+矛盾类型: ${currentContradiction.rule_type === 'ordered_but_not_recorded' ? '开了没写' : '写了没开'}
+严重程度: ${currentContradiction.severity === 'high' ? '高危' : currentContradiction.severity === 'medium' ? '中危' : '低危'}
+状态: ${currentContradiction.resolved ? '已整改' : '未整改'}
+时间: ${formatDateTime(currentContradiction.create_time)}
+      `.trim();
+
+      navigator.clipboard.writeText(text).then(() => {
+        alert('已复制到剪贴板');
+      }).catch(err => {
+        console.error('复制失败:', err);
+        alert('复制失败，请手动复制');
+      });
+    }
+
+    // 显示错误状态
+    function showError(message) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = 'block';
+      document.getElementById('detailContent').style.display = 'none';
+      document.getElementById('errorMessage').textContent = message;
+    }
+
+    // 格式化日期时间
+    function formatDateTime(datetime) {
+      if (!datetime) return '-';
+      const d = new Date(datetime);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    }
+  </script>
+</body>
+</html>

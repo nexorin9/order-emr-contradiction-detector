@@ -1,0 +1,54 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+eggs/
+*.egg-info/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage/
+.tox/
+
+# Node.js
+node_modules/
+dist/
+build/
+.npm/
+.yarn/
+.pnp/
+.pnp.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+data/output/
+logs/*.log
+score.json
+*.tmp
+*.temp
+*.log
+
+# Keep gitkeep files
+!.gitkeep

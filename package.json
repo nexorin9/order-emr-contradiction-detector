@@ -1,0 +1,40 @@
+{
+  "name": "order-emr-detect-cli",
+  "version": "1.0.0",
+  "description": "门诊医嘱-病程矛盾检测CLI工具，支持detect、query、stats命令",
+  "main": "dist/index.js",
+  "bin": {
+    "order-emr-detect": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/api/server.js",
+    "dev": "ts-node src/ts/index.ts",
+    "test": "jest",
+    "cli": "npm run build && npm link"
+  },
+  "keywords": [
+    "cli",
+    "healthcare",
+    "his",
+    "emr",
+    "contradiction-detection"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "cors": "^2.8.6",
+    "express": "^4.22.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

@@ -1,0 +1,112 @@
+# 门诊医嘱-病程矛盾实时检测系统配置文件
+
+# 时间对齐配置
+time_aligner:
+  # 医嘱和病程记录之间的时间窗口（分钟）
+  # 在此时间窗口内，认为医嘱和病程记录是相关的
+  time_window_minutes: 30
+
+  # 是否启用模糊匹配（考虑同义词、缩写）
+  fuzzy_matching: true
+
+  # 同义词配置
+  synonyms:
+    CT:
+      - 计算机断层扫描
+      - CAT
+    B超:
+      - 超声波检查
+      - 超声检查
+    血常规:
+      - 血液常规
+      - CBC
+
+# 矛盾检测规则配置
+detection:
+  # 规则类型
+  rules:
+    # 开了没写：开了医嘱但病程记录中没有相应记录
+    ordered_but_not_recorded:
+      enabled: true
+      severity_weights:
+        high: 3      # 高危：手术、操作类
+        medium: 2    # 中危：检查检验类
+        low: 1       # 低危：药品类
+
+    # 写了没开：病程记录中有描述但没有对应医嘱
+    recorded_but_not_ordered:
+      enabled: true
+      severity_weights:
+        high: 3
+        medium: 2
+        low: 1
+
+# 告警配置
+alerting:
+  # 是否启用告警
+  enabled: true
+
+  # 告警阈值：单个医生每日矛盾数超过此值时触发告警
+  threshold: 5
+
+  # 严重程度阈值
+  severity_threshold:
+    # 高危矛盾数超过此值时，即使总数未达threshold也告警
+    high_severity: 2
+
+  # 告警方式
+  methods:
+    - type: webhook
+      enabled: false
+      url: ""
+      headers:
+        Content-Type: application/json
+    - type: file
+      enabled: true
+      output_dir: "data/output/alerts"
+
+  # 告警冷却时间（分钟）：避免重复告警
+  cooldown_minutes: 60
+
+# Web服务配置
+web:
+  host: "0.0.0.0"
+  port: 3000
+  debug: false
+
+# 数据源配置
+data_sources:
+  his:
+    type: csv
+    path: "data/his_orders.csv"
+    required_columns:
+      - order_id
+      - patient_id
+      - doctor_id
+      - department
+      - order_type
+      - item_name
+      - create_time
+      - execute_time
+      - status
+
+  emr:
+    type: csv
+    path: "data/emr_records.csv"
+    required_columns:
+      - record_id
+      - patient_id
+      - doctor_id
+      - department
+      - record_type
+      - content_keywords
+      - create_time
+
+# 日志配置
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/detection.log"
+  console: true
+  # 每个检测run生成独立日志文件
+  per_run_log: true

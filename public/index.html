@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>门诊医嘱-病程矛盾检测系统</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+    }
+
+    /* 导航栏 */
+    .navbar {
+      background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+      color: white;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .navbar-brand {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .navbar-brand::before {
+      content: "🏥";
+    }
+
+    .navbar-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 6px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .btn-refresh {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-refresh:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-primary {
+      background: #1890ff;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #096dd9;
+    }
+
+    /* 主容器 */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    /* 筛选区域 */
+    .filter-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filter-label {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .filter-input,
+    .filter-select {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+      border-color: #1890ff;
+      box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    }
+
+    .filter-select {
+      min-width: 150px;
+      background: white;
+    }
+
+    .filter-input[type="date"] {
+      width: 150px;
+    }
+
+    .filter-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+
+    /* 概览卡片 */
+    .overview-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-title {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .card-value.danger {
+      color: #f5222d;
+    }
+
+    .card-value.warning {
+      color: #fa8c16;
+    }
+
+    .card-value.success {
+      color: #52c41a;
+    }
+
+    .card-sub {
+      font-size: 12px;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    /* 图表区域 */
+    .charts-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .chart-card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .chart-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 250px;
+    }
+
+    /* 表格区域 */
+    .table-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .table-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    th {
+      background: #fafafa;
+      font-weight: 600;
+      color: #333;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    th:hover {
+      background: #f0f0f0;
+    }
+
+    th .sort-icon {
+      margin-left: 4px;
+      opacity: 0.5;
+    }
+
+    th.sorted .sort-icon {
+      opacity: 1;
+    }
+
+    td {
+      font-size: 13px;
+      color: #666;
+    }
+
+    tr:hover {
+      background: #fafafa;
+    }
+
+    .severity-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .severity-high {
+      background: #fff1f0;
+      color: #f5222d;
+    }
+
+    .severity-medium {
+      background: #fff7e6;
+      color: #fa8c16;
+    }
+
+    .severity-low {
+      background: #f6ffed;
+      color: #52c41a;
+    }
+
+    .rule-type-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+
+    .resolved-tag {
+      color: #52c41a;
+      font-size: 12px;
+    }
+
+    .unresolved-tag {
+      color: #f5222d;
+      font-size: 12px;
+    }
+
+    .action-link {
+      color: #1890ff;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .action-link:hover {
+      text-decoration: underline;
+    }
+
+    /* 分页 */
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    .pagination-info {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .pagination-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pagination-btn {
+      padding: 4px 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      color: #666;
+      transition: all 0.2s;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      color: #1890ff;
+      border-color: #1890ff;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+      background: #1890ff;
+      border-color: #1890ff;
+      color: white;
+    }
+
+    /* 加载状态 */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+    }
+
+    .loading::after {
+      content: "";
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #d9d9d9;
+      border-top-color: #1890ff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 空状态 */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-text {
+      font-size: 14px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .charts-section {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-section {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .filter-select,
+      .filter-input[type="date"] {
+        width: 100%;
+      }
+
+      .filter-actions {
+        margin-left: 0;
+        margin-top: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="navbar-brand">门诊医嘱-病程矛盾实时检测系统</div>
+    <div class="navbar-actions">
+      <button class="btn btn-refresh" onclick="refreshData()">🔄 刷新数据</button>
+      <button class="btn btn-refresh" onclick="runDetection()">▶ 运行检测</button>
+    </div>
+  </nav>
+
+  <!-- 主容器 -->
+  <div class="container">
+    <!-- 筛选区域 -->
+    <div class="filter-section">
+      <div class="filter-group">
+        <label class="filter-label">科室</label>
+        <select id="filterDepartment" class="filter-select" onchange="applyFilters()">
+          <option value="">全部科室</option>
+          <option value="内科">内科</option>
+          <option value="外科">外科</option>
+          <option value="儿科">儿科</option>
+          <option value="妇产科">妇产科</option>
+          <option value="急诊科">急诊科</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">医生</label>
+        <select id="filterDoctor" class="filter-select" onchange="applyFilters()">
+          <option value="">全部医生</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">开始日期</label>
+        <input type="date" id="filterStartDate" class="filter-input" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">结束日期</label>
+        <input type="date" id="filterEndDate" class="filter-input" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">严重程度</label>
+        <select id="filterSeverity" class="filter-select" onchange="applyFilters()">
+          <option value="">全部</option>
+          <option value="high">高危</option>
+          <option value="medium">中危</option>
+          <option value="low">低危</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">状态</label>
+        <select id="filterResolved" class="filter-select" onchange="applyFilters()">
+          <option value="">全部</option>
+          <option value="false">未整改</option>
+          <option value="true">已整改</option>
+        </select>
+      </div>
+      <div class="filter-actions">
+        <button class="btn btn-primary" onclick="applyFilters()">应用筛选</button>
+        <button class="btn" onclick="resetFilters()">重置</button>
+      </div>
+    </div>
+
+    <!-- 概览卡片 -->
+    <div class="overview-cards">
+      <div class="card">
+        <div class="card-title">今日矛盾总数</div>
+        <div class="card-value" id="totalCount">-</div>
+        <div class="card-sub">共 <span id="totalUnresolved">0</span> 条未整改</div>
+      </div>
+      <div class="card">
+        <div class="card-title">高危矛盾</div>
+        <div class="card-value danger" id="highCount">-</div>
+        <div class="card-sub">需立即处理</div>
+      </div>
+      <div class="card">
+        <div class="card-title">中危矛盾</div>
+        <div class="card-value warning" id="mediumCount">-</div>
+        <div class="card-sub">建议当日处理</div>
+      </div>
+      <div class="card">
+        <div class="card-title">低危矛盾</div>
+        <div class="card-value success" id="lowCount">-</div>
+        <div class="card-sub">可后续处理</div>
+      </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="charts-section">
+      <div class="chart-card">
+        <div class="chart-title">科室矛盾分布</div>
+        <div class="chart-container">
+          <canvas id="deptChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">近7日矛盾趋势</div>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 矛盾列表表格 -->
+    <div class="table-section">
+      <div class="table-header">
+        <div class="table-title">矛盾记录列表</div>
+        <div class="table-actions">
+          <button class="btn" onclick="exportTable()">📥 导出</button>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table id="contradictionTable">
+          <thead>
+            <tr>
+              <th data-sort="patient_id">患者ID <span class="sort-icon">↕</span></th>
+              <th data-sort="department">科室 <span class="sort-icon">↕</span></th>
+              <th data-sort="doctor_id">医生 <span class="sort-icon">↕</span></th>
+              <th data-sort="rule_type">矛盾类型 <span class="sort-icon">↕</span></th>
+              <th data-sort="severity">严重程度 <span class="sort-icon">↕</span></th>
+              <th data-sort="create_time">时间 <span class="sort-icon">↕</span></th>
+              <th>状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="8" class="loading">加载中</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <div class="pagination-info" id="paginationInfo">显示 0-0 条，共 0 条</div>
+        <div class="pagination-controls">
+          <button class="pagination-btn" id="prevBtn" onclick="prevPage()" disabled>上一页</button>
+          <span id="pageNumbers"></span>
+          <button class="pagination-btn" id="nextBtn" onclick="nextPage()">下一页</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // API 基础URL
+    const API_BASE = 'http://localhost:3000';
+
+    // 状态管理
+    let allContradictions = [];
+    let filteredContradictions = [];
+    let currentPage = 1;
+    let pageSize = 10;
+    let sortField = 'create_time';
+    let sortOrder = 'desc';
+    let deptChart = null;
+    let trendChart = null;
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      loadData();
+      setupTableSorting();
+    });
+
+    // 加载数据
+    async function loadData() {
+      try {
+        // 获取矛盾列表
+        const response = await fetch(`${API_BASE}/api/contradictions?page=1&limit=1000`);
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          allContradictions = result.data.contradictions || [];
+          filteredContradictions = [...allContradictions];
+          updateOverviewCards();
+          updateDeptChart();
+          updateTrendChart();
+          applyFilters();
+          populateDoctorFilter();
+        } else {
+          showEmptyState();
+        }
+      } catch (error) {
+        console.error('加载数据失败:', error);
+        showEmptyState();
+      }
+    }
+
+    // 显示空状态
+    function showEmptyState() {
+      document.getElementById('tableBody').innerHTML = `
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <div class="empty-state-text">暂无矛盾记录</div>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    // 更新概览卡片
+    function updateOverviewCards() {
+      const today = new Date().toISOString().split('T')[0];
+
+      const todayContradictions = allContradictions.filter(c =>
+        c.create_time && c.create_time.startsWith(today)
+      );
+
+      const highCount = todayContradictions.filter(c => c.severity === 'high').length;
+      const mediumCount = todayContradictions.filter(c => c.severity === 'medium').length;
+      const lowCount = todayContradictions.filter(c => c.severity === 'low').length;
+      const unresolvedCount = todayContradictions.filter(c => !c.resolved).length;
+
+      document.getElementById('totalCount').textContent = todayContradictions.length;
+      document.getElementById('totalUnresolved').textContent = unresolvedCount;
+      document.getElementById('highCount').textContent = highCount;
+      document.getElementById('mediumCount').textContent = mediumCount;
+      document.getElementById('lowCount').textContent = lowCount;
+    }
+
+    // 更新科室分布图
+    function updateDeptChart() {
+      const deptCounts = {};
+      allContradictions.forEach(c => {
+        deptCounts[c.department] = (deptCounts[c.department] || 0) + 1;
+      });
+
+      const labels = Object.keys(deptCounts);
+      const data = Object.values(deptCounts);
+
+      const ctx = document.getElementById('deptChart').getContext('2d');
+
+      if (deptChart) {
+        deptChart.destroy();
+      }
+
+      deptChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels.length > 0 ? labels : ['无数据'],
+          datasets: [{
+            label: '矛盾数量',
+            data: data.length > 0 ? data : [0],
+            backgroundColor: 'rgba(24, 144, 255, 0.8)',
+            borderColor: 'rgba(24, 144, 255, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 更新趋势图
+    function updateTrendChart() {
+      const last7Days = [];
+      const dayCounts = {};
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        last7Days.push(dateStr);
+        dayCounts[dateStr] = 0;
+      }
+
+      allContradictions.forEach(c => {
+        if (c.create_time) {
+          const dateStr = c.create_time.split('T')[0];
+          if (dayCounts.hasOwnProperty(dateStr)) {
+            dayCounts[dateStr]++;
+          }
+        }
+      });
+
+      const labels = last7Days.map(d => d.slice(5).replace('-', '/'));
+      const data = last7Days.map(d => dayCounts[d]);
+
+      const ctx = document.getElementById('trendChart').getContext('2d');
+
+      if (trendChart) {
+        trendChart.destroy();
+      }
+
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '矛盾数量',
+            data: data,
+            borderColor: 'rgba(24, 144, 255, 1)',
+            backgroundColor: 'rgba(24, 144, 255, 0.1)',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // 填充医生筛选器
+    function populateDoctorFilter() {
+      const doctorSet = new Set(allContradictions.map(c => c.doctor_id));
+      const doctorSelect = document.getElementById('filterDoctor');
+
+      doctorSelect.innerHTML = '<option value="">全部医生</option>';
+      doctorSet.forEach(doctorId => {
+        if (doctorId) {
+          const option = document.createElement('option');
+          option.value = doctorId;
+          option.textContent = doctorId;
+          doctorSelect.appendChild(option);
+        }
+      });
+    }
+
+    // 应用筛选
+    function applyFilters() {
+      const department = document.getElementById('filterDepartment').value;
+      const doctor = document.getElementById('filterDoctor').value;
+      const severity = document.getElementById('filterSeverity').value;
+      const resolved = document.getElementById('filterResolved').value;
+      const startDate = document.getElementById('filterStartDate').value;
+      const endDate = document.getElementById('filterEndDate').value;
+
+      filteredContradictions = allContradictions.filter(c => {
+        if (department && c.department !== department) return false;
+        if (doctor && c.doctor_id !== doctor) return false;
+        if (severity && c.severity !== severity) return false;
+        if (resolved && String(c.resolved) !== resolved) return false;
+        if (startDate && c.create_time && c.create_time < startDate) return false;
+        if (endDate && c.create_time && c.create_time.split('T')[0] > endDate) return false;
+        return true;
+      });
+
+      // 应用排序
+      sortContradictions();
+      currentPage = 1;
+      renderTable();
+    }
+
+    // 重置筛选
+    function resetFilters() {
+      document.getElementById('filterDepartment').value = '';
+      document.getElementById('filterDoctor').value = '';
+      document.getElementById('filterSeverity').value = '';
+      document.getElementById('filterResolved').value = '';
+      document.getElementById('filterStartDate').value = '';
+      document.getElementById('filterEndDate').value = '';
+
+      filteredContradictions = [...allContradictions];
+      sortContradictions();
+      currentPage = 1;
+      renderTable();
+    }
+
+    // 排序矛盾记录
+    function sortContradictions() {
+      filteredContradictions.sort((a, b) => {
+        let valA = a[sortField];
+        let valB = b[sortField];
+
+        if (typeof valA === 'string') {
+          valA = valA.toLowerCase();
+          valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // 设置表格排序
+    function setupTableSorting() {
+      const headers = document.querySelectorAll('th[data-sort]');
+      headers.forEach(th => {
+        th.addEventListener('click', () => {
+          const field = th.dataset.sort;
+          if (sortField === field) {
+            sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortField = field;
+            sortOrder = 'desc';
+          }
+
+          // 更新表头样式
+          headers.forEach(h => h.classList.remove('sorted'));
+          th.classList.add('sorted');
+
+          applyFilters();
+        });
+      });
+    }
+
+    // 渲染表格
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const startIndex = (currentPage - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const pageData = filteredContradictions.slice(startIndex, endIndex);
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div class="empty-state-text">没有符合条件的记录</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = pageData.map(c => `
+          <tr>
+            <td>${escapeHtml(c.patient_id || '-')}</td>
+            <td>${escapeHtml(c.department || '-')}</td>
+            <td>${escapeHtml(c.doctor_id || '-')}</td>
+            <td>
+              <span class="rule-type-tag">
+                ${c.rule_type === 'ordered_but_not_recorded' ? '开了没写' : '写了没开'}
+              </span>
+            </td>
+            <td>
+              <span class="severity-tag severity-${c.severity}">
+                ${c.severity === 'high' ? '高危' : c.severity === 'medium' ? '中危' : '低危'}
+              </span>
+            </td>
+            <td>${formatDateTime(c.create_time)}</td>
+            <td>
+              <span class="${c.resolved ? 'resolved-tag' : 'unresolved-tag'}">
+                ${c.resolved ? '✓ 已整改' : '✗ 未整改'}
+              </span>
+            </td>
+            <td>
+              <a class="action-link" href="detail.html?id=${c.id}">查看详情</a>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      updatePagination();
+    }
+
+    // 更新分页
+    function updatePagination() {
+      const total = filteredContradictions.length;
+      const totalPages = Math.ceil(total / pageSize);
+      const startIndex = (currentPage - 1) * pageSize + 1;
+      const endIndex = Math.min(currentPage * pageSize, total);
+
+      document.getElementById('paginationInfo').textContent =
+        `显示 ${startIndex}-${endIndex} 条，共 ${total} 条`;
+
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+
+      // 生成分页数字
+      const pageNumbers = document.getElementById('pageNumbers');
+      let pagesHtml = '';
+      const maxPages = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxPages / 2));
+      let endPage = Math.min(totalPages, startPage + maxPages - 1);
+
+      if (endPage - startPage < maxPages - 1) {
+        startPage = Math.max(1, endPage - maxPages + 1);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        pagesHtml += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+      pageNumbers.innerHTML = pagesHtml;
+    }
+
+    // 分页操作
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(filteredContradictions.length / pageSize);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+      }
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      renderTable();
+    }
+
+    // 刷新数据
+    function refreshData() {
+      loadData();
+    }
+
+    // 运行检测
+    async function runDetection() {
+      alert('请使用命令行工具运行检测：\npython -m src.py.cli detect --his <his_file> --emr <emr_file> --output <output_dir>');
+    }
+
+    // 导出表格
+    function exportTable() {
+      const headers = ['患者ID', '科室', '医生', '矛盾类型', '严重程度', '时间', '状态'];
+      const rows = filteredContradictions.map(c => [
+        c.patient_id || '-',
+        c.department || '-',
+        c.doctor_id || '-',
+        c.rule_type === 'ordered_but_not_recorded' ? '开了没写' : '写了没开',
+        c.severity === 'high' ? '高危' : c.severity === 'medium' ? '中危' : '低危',
+        formatDateTime(c.create_time),
+        c.resolved ? '已整改' : '未整改'
+      ]);
+
+      const csvContent = [headers, ...rows].map(row =>
+        row.map(cell => `"${cell}"`).join(',')
+      ).join('\n');
+
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `矛盾记录_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+
+    // 工具函数
+    function escapeHtml(text) {
+      if (!text) return '-';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDateTime(datetime) {
+      if (!datetime) return '-';
+      const d = new Date(datetime);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+  </script>
+</body>
+</html>

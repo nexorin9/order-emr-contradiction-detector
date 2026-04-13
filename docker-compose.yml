@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  order-emr-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-emr-contradiction-detector
+    ports:
+      - "3000:3000"
+    volumes:
+      # 挂载数据目录
+      - ./data:/app/data
+      # 挂载配置目录
+      - ./.config:/app/.config
+      # 挂载日志目录
+      - ./logs:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 开发模式（可选）
+  order-emr-detector-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-emr-detector-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src/py:/app/src/py
+      - ./src/ts:/app/src/ts
+      - ./public:/app/public
+      - ./.config:/app/.config
+    environment:
+      - NODE_ENV=development
+      - PYTHONUNBUFFERED=1
+    command: ["npm", "run", "dev"]
+    profiles:
+      - dev

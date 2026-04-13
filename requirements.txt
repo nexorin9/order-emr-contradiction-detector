@@ -1,0 +1,5 @@
+# Python dependencies for order-emr-contradiction-detector
+pyyaml>=6.0
+pytest>=7.0
+pytest-cov>=4.0
+colorama>=0.4.6
